@@ -19,11 +19,11 @@ def to_image(li):
     axisx=[e[0] for e in data2]
     axisy=[e[1] for e in data2]
     plt.bar( axisx,axisy, color ='maroon',
-        width = 0.4)
+        width = 0.2)
 
     plt.xlabel(xaxis)
     plt.ylabel(yaxis)
-    plt.title("Students enrolled in different courses")
+    plt.title("plot "+yaxis+" vs "+xaxis)
     if os.path.exists("./abc.png"):
         os.remove("abc.png")
     plt.savefig('abc.png', bbox_inches='tight')
