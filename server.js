@@ -7,6 +7,7 @@ const User= require('./models/user')
 const db="mongodb://127.0.0.1:27017/demo"
 var cors = require('cors')
 app.use(cors())
+var bodyParser = require('body-parser')
 //!!!dont use localhost use 127.0.0.1
 /*
 mongoose.connect(db,err=>
@@ -26,27 +27,29 @@ function verifyToken(req,res,next)
 {
     if(!req.headers.authorization)
     {
-        return res.status(401).send("unauthorized")
+        return res.status(401).send("unauthorized no header")
     }
     let token = req.headers.authorization.split(' ')[1]
     if(token==="null")
     {
-        return res.status(401).send("unauthorized")
+        return res.status(401).send("unauthorized no token")
     }
-    let payload=jwt.verify(token,'secretkey')
+    let payload=jwt.verify(token,'secret')
     if(!payload)
     {
-        return res.status(400).send('unauthorized request')
+        return res.status(400).send('unauthorized request token mismatch')
     }
     req.userId=payload.subject
     next()
 
 }
 
-app.post('/register',(req,res)=>{
+app.post('/register',bodyParser.json(),(req,res)=>{
 
     let userData=req.body
     console.log("0")
+
+    console.log(JSON.stringify(userData)+"  data");
     let user=new User(userData)
 console.log("1")
    /*
@@ -65,8 +68,9 @@ console.log("1")
      })*/
      user.save().then(registeredUser => {
         let payload={subject: registeredUser._id}//convention for payload structure
-        let token=jwt.sign(payload,'secretKey')
+        let token=jwt.sign(payload,'secret')
         res.status(200).send({token})
+        console.log("saved!")
       }).catch(
         err => console.log(err)
       )
@@ -74,9 +78,34 @@ console.log("1")
 
 })
 
-app.post('/login',(req,res)=>{
+app.post('/login',bodyParser.json(),(req,res)=>{
 
-    let userData=req.body
+    let userData=req.body;
+    console.log(JSON.stringify(userData));
+    console.log(3);
+    User.findOne({email:userData.email}).then(
+        user=>
+        {
+            if(!user)
+            {
+                res.status(401).send('Invalid email')
+            }
+            else if(user.password!=userData.password)
+            {
+                res.status(401).send('Invalid password')
+            }
+            else{
+                let payload={subject:user._id}
+                let token=jwt.sign(payload,'secret')
+                res.status(200).send({token})
+            }
+        }
+
+
+    ).catch(
+        err => console.log(err)
+      )
+  /*
     User.findOne({email:userData.email},(error,user)=>{
 
         if(error)
@@ -105,7 +134,7 @@ app.post('/login',(req,res)=>{
         }
 
 
-    })
+    })*/
 
 
 
@@ -135,6 +164,7 @@ pythonProcess.on('close', (code) => {
 })
 */
  //x axis is group by columns y axis is the the column to be selected
+ //bodyParser.json(),verifyToken,
 app.get("/getimage/:xaxis/:yaxis",(req,res) =>{
     const spawn = require("child_process").spawn;
     const pythonProcess = spawn('python',["script.py", req.params.xaxis, req.params.yaxis]);
@@ -143,6 +173,7 @@ app.get("/getimage/:xaxis/:yaxis",(req,res) =>{
                     console.log("success"+data);
                    // res.status(200).json({message:"done"});
                     res.sendFile("abc.png", { root: '.' });
+                    console.log("sent");
                 });
 
      pythonProcess.stderr.on('data', (data) => {
