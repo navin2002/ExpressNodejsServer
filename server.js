@@ -1,6 +1,117 @@
 const express=require('express')
 var fs = require('fs');
 const app= express()
+const jwt=require('jsonwebtoken')
+const mongoose=require('mongoose')
+const User= require('./models/user')
+const db="mongodb://127.0.0.1:27017/demo"
+var cors = require('cors')
+app.use(cors())
+//!!!dont use localhost use 127.0.0.1
+/*
+mongoose.connect(db,err=>
+    {
+        if(err)
+        {
+            console.error("Error!"+err)
+        }
+        else
+        {
+            console.log("connected")
+        }
+
+    })*/
+
+function verifyToken(req,res,next)
+{
+    if(!req.headers.authorization)
+    {
+        return res.status(401).send("unauthorized")
+    }
+    let token = req.headers.authorization.split(' ')[1]
+    if(token==="null")
+    {
+        return res.status(401).send("unauthorized")
+    }
+    let payload=jwt.verify(token,'secretkey')
+    if(!payload)
+    {
+        return res.status(400).send('unauthorized request')
+    }
+    req.userId=payload.subject
+    next()
+
+}
+
+app.post('/register',(req,res)=>{
+
+    let userData=req.body
+    console.log("0")
+    let user=new User(userData)
+console.log("1")
+   /*
+    user.save((error,registeredUser) =>{
+        if(error)
+        {
+        console.log(error)
+        }
+        else
+        {
+            let payload={subject: registeresUser._id}//convention for payload structure
+            let token=jwt.sign(payload,'secretKey')
+            res.status(200).send({token})
+        }
+
+     })*/
+     user.save().then(registeredUser => {
+        let payload={subject: registeredUser._id}//convention for payload structure
+        let token=jwt.sign(payload,'secretKey')
+        res.status(200).send({token})
+      }).catch(
+        err => console.log(err)
+      )
+
+
+})
+
+app.post('/login',(req,res)=>{
+
+    let userData=req.body
+    User.findOne({email:userData.email},(error,user)=>{
+
+        if(error)
+        {
+            console.log(error)
+        }
+        else{
+
+            if(!user)
+            {
+                res.status(401).send('Invalid email')
+            }
+            else if(user.password!=userData.password)
+            {
+                res.status(401).send('Invalid password')
+            }
+            else{
+                let payload={subject:user._id}
+                let token=jwt.sign(payload,'secretKey')
+                res.status(200).send({token})
+            }
+
+
+
+
+        }
+
+
+    })
+
+
+
+
+})
+
 /*
 app.get("/download/:xaxis/:yaxis",(req,res) =>{
 
@@ -76,4 +187,13 @@ app.get("/getimage/:xaxis/:yaxis",(req,res) =>{
     //res.sendFile(filepath)
 
 
-app.listen(3000)
+    mongoose
+    .connect(db)
+    .then(() => {
+      app.listen("3000", () => {
+        console.log("Server is listening on port 3000");
+      });
+    })
+    .catch((err) => {
+      console.log("Error Occurred:"+err);
+    });
